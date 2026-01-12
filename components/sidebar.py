@@ -18,72 +18,91 @@ from connection_manager import (
 )
 
 
-def render_connection_manager():
+@st.dialog("🔌 Manage Connections", width="large")
+def connection_management_dialog():
     """
-    Render the connection management section in the sidebar.
+    Modal dialog for managing Snowflake connections.
     """
-    # Use checkbox toggle instead of expander for better compatibility
-    show_connections = st.checkbox("🔌 Manage Connections", value=False, key="show_connections_toggle")
+    # Get current connections
+    connection_names = get_connection_names()
+    active_name, _ = get_active_connection()
     
-    if show_connections:
-        # Get available connections
-        connection_names = get_connection_names()
-        active_name, _ = get_active_connection()
+    # Tabs for better organization
+    tab1, tab2 = st.tabs(["📋 Saved Connections", "➕ Add New"])
+    
+    with tab1:
+        st.markdown("### Your Connections")
         
-        # Connection selector
-        if connection_names:
-            # Find default index
-            default_idx = 0
-            if active_name in connection_names:
-                default_idx = connection_names.index(active_name)
-            
-            selected = st.selectbox(
-                "Active Connection",
-                connection_names,
-                index=default_idx,
-                key="connection_selector"
-            )
-            
-            # Switch connection if changed
-            if selected != active_name and selected != "Environment (.env)":
-                if set_active_connection(selected):
-                    clear_connection_cache()
-                    st.success(f"Switched to {selected}")
-                    st.rerun()
+        if not connection_names:
+            st.info("No connections saved yet. Add one in the 'Add New' tab.")
         else:
-            st.info("No saved connections. Add one below or configure .env file.")
-        
-        st.markdown("---")
-        
-        # Add new connection section
-        st.markdown("**➕ Add New Connection**")
+            # List all connections
+            for conn_name in connection_names:
+                is_active = conn_name == active_name
+                is_env = conn_name == "Environment (.env)"
+                
+                col1, col2, col3 = st.columns([3, 1, 1])
+                
+                with col1:
+                    if is_active:
+                        st.markdown(f"**🟢 {conn_name}** *(active)*")
+                    else:
+                        st.markdown(f"⚪ {conn_name}")
+                
+                with col2:
+                    if not is_active:
+                        if st.button("Activate", key=f"activate_{conn_name}", use_container_width=True):
+                            if is_env or set_active_connection(conn_name):
+                                clear_connection_cache()
+                                st.success(f"Switched to {conn_name}")
+                                st.rerun()
+                
+                with col3:
+                    if not is_env:
+                        if st.button("🗑️", key=f"delete_{conn_name}", help=f"Delete {conn_name}"):
+                            if delete_connection(conn_name):
+                                clear_connection_cache()
+                                st.success(f"Deleted '{conn_name}'")
+                                st.rerun()
+                            else:
+                                st.error("Failed to delete")
+                
+                st.divider()
+    
+    with tab2:
+        st.markdown("### Add New Connection")
         
         conn_name = st.text_input(
             "Connection Name",
             placeholder="e.g., Production, Development",
-            key="new_conn_name"
+            key="modal_conn_name"
         )
-        account_id = st.text_input(
-            "Account ID",
-            placeholder="e.g., abc12345.us-east-1",
-            key="new_account_id"
-        )
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            account_id = st.text_input(
+                "Account ID",
+                placeholder="e.g., abc12345.us-east-1",
+                key="modal_account_id"
+            )
+        with col2:
+            warehouse = st.text_input(
+                "Default Warehouse",
+                value="COMPUTE_WH",
+                key="modal_warehouse"
+            )
+        
         username = st.text_input(
             "Username",
             placeholder="your_username",
-            key="new_username"
+            key="modal_username"
         )
+        
         password = st.text_input(
             "Password",
             type="password",
             placeholder="your_password",
-            key="new_password"
-        )
-        warehouse = st.text_input(
-            "Default Warehouse",
-            value="COMPUTE_WH",
-            placeholder="COMPUTE_WH",
-            key="new_warehouse"
+            key="modal_password"
         )
         
         new_config = {
@@ -93,55 +112,41 @@ def render_connection_manager():
             "warehouse": warehouse
         }
         
-        col1, col2 = st.columns(2)
+        st.markdown("")  # Spacing
+        
+        col1, col2, col3 = st.columns([1, 1, 1])
+        
         with col1:
-            if st.button("🔍 Test", use_container_width=True, key="test_conn_btn"):
+            if st.button("🔍 Test Connection", use_container_width=True):
                 if account_id and username and password:
-                    with st.spinner("Testing connection..."):
+                    with st.spinner("Testing..."):
                         success, message = test_connection(new_config)
                     if success:
                         st.success(f"✓ {message}")
                     else:
                         st.error(f"✗ {message}")
                 else:
-                    st.warning("Please fill in Account ID, Username, and Password")
+                    st.warning("Fill in all required fields")
         
         with col2:
-            if st.button("💾 Save", use_container_width=True, key="save_conn_btn"):
+            if st.button("💾 Save Connection", use_container_width=True, type="primary"):
                 if conn_name and account_id and username and password:
                     if save_connection(conn_name, new_config):
                         clear_connection_cache()
-                        st.success(f"✓ Connection '{conn_name}' saved!")
+                        st.success(f"✓ '{conn_name}' saved!")
                         st.rerun()
                     else:
-                        st.error("Failed to save connection")
+                        st.error("Failed to save")
                 else:
-                    st.warning("Please fill in all required fields")
+                    st.warning("Fill in all required fields")
         
-        # Delete connection
-        st.markdown("---")
-        if connection_names:
-            # Filter out environment option for deletion
-            deletable = [c for c in connection_names if c != "Environment (.env)"]
-            if deletable:
-                st.markdown("**🗑️ Delete Connection**")
-                to_delete = st.selectbox(
-                    "Select to delete",
-                    deletable,
-                    key="delete_selector",
-                    label_visibility="collapsed"
-                )
-                if st.button("Delete Connection", type="secondary", use_container_width=True):
-                    if delete_connection(to_delete):
-                        clear_connection_cache()
-                        st.success(f"Deleted '{to_delete}'")
-                        st.rerun()
-                    else:
-                        st.error("Failed to delete connection")
-        
-        # Security warning
-        st.markdown("---")
-        st.caption("⚠️ Credentials are stored locally in connections.json")
+        with col3:
+            if st.button("Cancel", use_container_width=True):
+                st.rerun()
+    
+    # Footer
+    st.markdown("---")
+    st.caption("⚠️ Credentials are stored locally in `connections.json`")
 
 
 def render_sidebar():
@@ -154,8 +159,32 @@ def render_sidebar():
     with st.sidebar:
         st.header("⚙️ Settings")
         
-        # Connection manager section
-        render_connection_manager()
+        # Connection section - clean and compact
+        connection_names = get_connection_names()
+        active_name, _ = get_active_connection()
+        
+        # Quick switch dropdown
+        if connection_names:
+            default_idx = 0
+            if active_name in connection_names:
+                default_idx = connection_names.index(active_name)
+            
+            selected = st.selectbox(
+                "🔌 Active Connection",
+                connection_names,
+                index=default_idx,
+                key="quick_connection_switch"
+            )
+            
+            # Switch connection if changed
+            if selected != active_name and selected != "Environment (.env)":
+                if set_active_connection(selected):
+                    clear_connection_cache()
+                    st.rerun()
+        
+        # Button to open modal
+        if st.button("⚙️ Manage Connections", use_container_width=True):
+            connection_management_dialog()
         
         st.markdown("---")
         
@@ -163,7 +192,7 @@ def render_sidebar():
         conn = get_connection()
         if not conn:
             st.error("✗ Not connected to Snowflake")
-            st.info("Add a connection above or configure your .env file")
+            st.info("Click 'Manage Connections' to add a connection")
             return [], DEFAULT_DAYS
         
         # Warehouse selector (multi-select)
@@ -210,13 +239,5 @@ def render_sidebar():
         # Credit rate info
         st.markdown("---")
         st.markdown(f"**Credit Rate:** ${CREDIT_RATE:.2f}/credit")
-        
-        # Connection status
-        st.markdown("---")
-        active_name, _ = get_active_connection()
-        if conn:
-            st.success(f"✓ Connected: {active_name or 'Unknown'}")
-        else:
-            st.error("✗ Not connected")
     
     return selected_warehouses, days_back
