@@ -8,6 +8,7 @@ A Streamlit-based dashboard to monitor and analyze Snowflake credit consumption,
 
 ## Features
 
+- **Multi-Connection Management** - Save and switch between multiple Snowflake connections via UI
 - **Multi-Warehouse Selection** - Analyze one or multiple warehouses simultaneously
 - **Cost Breakdown** - Per-warehouse credit and cost distribution
 - **Daily Trends** - Visual charts showing credit consumption over time
@@ -74,11 +75,33 @@ http://localhost:8501
 
 | Control | Description |
 |---------|-------------|
+| **Manage Connections** | Toggle to show/hide connection management |
+| **Active Connection** | Switch between saved Snowflake connections |
 | **Select Warehouses** | Multi-select dropdown to choose warehouses |
 | **Days to analyze** | Slider to set the time range (1-30 days) |
 | **Auto-refresh** | Toggle automatic data refresh |
 | **Refresh Data** | Manual refresh button |
 | **Reload Warehouses** | Refresh the warehouse list |
+
+### Connection Management
+
+The app supports multiple Snowflake connections:
+
+1. **Environment (.env)** - Default connection from `.env` file
+2. **Saved Connections** - Add custom connections via the UI
+
+**Adding a New Connection:**
+1. Check "Manage Connections" in the sidebar
+2. Fill in the connection details:
+   - Connection Name (e.g., "Production", "Development")
+   - Account ID
+   - Username
+   - Password
+   - Default Warehouse
+3. Click "Test" to verify the connection
+4. Click "Save" to store the connection
+
+> **Note:** Saved connections are stored in `connections.json` (gitignored for security)
 
 ### Metrics Displayed
 
@@ -136,9 +159,10 @@ sf_credit_monitor/
 ├── config.py                 # Configuration & constants
 ├── database.py               # Snowflake connection handling
 ├── queries.py                # All data fetching functions
+├── connection_manager.py     # Multi-connection CRUD operations
 ├── components/
 │   ├── __init__.py
-│   ├── sidebar.py            # Sidebar controls
+│   ├── sidebar.py            # Sidebar controls & connection UI
 │   ├── metrics.py            # Summary metrics section
 │   ├── charts.py             # Daily/hourly charts
 │   ├── efficiency.py         # Warehouse efficiency section
@@ -146,6 +170,7 @@ sf_credit_monitor/
 │   └── warehouse_breakdown.py # Per-warehouse breakdown
 ├── requirements.txt
 ├── .env                      # Credentials (not in repo)
+├── connections.json          # Saved connections (not in repo)
 ├── .gitignore
 └── README.md
 ```

@@ -3,6 +3,9 @@
 .env.*
 *.env
 
+# Connection configurations (contains credentials)
+connections.json
+
 # Virtual environment
 venv/
 .venv/
