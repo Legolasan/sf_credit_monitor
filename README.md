@@ -13,6 +13,8 @@ A Streamlit-based dashboard to monitor and analyze Snowflake credit consumption,
 - **Daily Trends** - Visual charts showing credit consumption over time
 - **Hourly Patterns** - Identify peak usage hours for optimization
 - **Query Analysis** - Breakdown by query type (INSERT, COPY, MERGE, etc.)
+- **Warehouse Efficiency** - Utilization metrics, queue times, and optimization recommendations
+- **Expensive Queries** - Identify costliest queries with estimated credit usage
 - **Auto-Refresh** - Configurable refresh intervals (30s, 1min, 5min)
 - **Real-time Metrics** - Total credits, estimated costs, query counts
 
@@ -93,7 +95,40 @@ http://localhost:8501
 2. **Daily Credit Consumption** - Bar chart with daily trends
 3. **Hourly Usage Pattern** - Identifies peak hours
 4. **Query Type Breakdown** - Pie chart showing INSERT/COPY/MERGE distribution
-5. **Daily Breakdown Table** - Detailed daily statistics
+5. **Warehouse Efficiency** - Utilization metrics with smart recommendations
+6. **Expensive Queries** - Top N queries by execution time with cost estimates
+7. **Daily Breakdown Table** - Detailed daily statistics
+
+### Warehouse Efficiency Metrics
+
+| Metric | Description |
+|--------|-------------|
+| **Total Queries** | Number of queries executed on the warehouse |
+| **Active Hours** | Hours the warehouse was actively running |
+| **Credits/Query** | Average credit cost per query |
+| **Avg Queue Time** | Average time queries waited for resources |
+| **Efficiency Score** | Relative efficiency rating (higher is better) |
+
+**Smart Recommendations:**
+- 🔴 High queue time → Suggests scaling up warehouse size
+- 🔵 Low utilization → Suggests reducing auto-suspend timeout
+- 🟢 Healthy → Shows efficiency confirmation
+
+### Expensive Queries Analysis
+
+| Column | Description |
+|--------|-------------|
+| **User** | Who executed the query |
+| **Warehouse** | Which warehouse was used |
+| **Type** | Query type (SELECT, INSERT, COPY, MERGE, etc.) |
+| **Exec Time** | Execution duration in seconds |
+| **GB Scanned** | Amount of data scanned |
+| **Est. Cost** | Estimated credit cost based on warehouse size |
+
+**Features:**
+- Adjustable limit (10, 15, 25, 50 queries)
+- Cost distribution by query type (pie chart)
+- Expandable SQL preview for top 5 queries
 
 ## Configuration
 
@@ -113,9 +148,10 @@ CREDIT_RATE = 3.00  # USD per credit
 ### Required Snowflake Permissions
 
 The user needs access to:
-- `SNOWFLAKE.ACCOUNT_USAGE.WAREHOUSE_METERING_HISTORY`
-- `SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY`
-- `SHOW WAREHOUSES` command
+- `SNOWFLAKE.ACCOUNT_USAGE.WAREHOUSE_METERING_HISTORY` - Credit consumption data
+- `SNOWFLAKE.ACCOUNT_USAGE.WAREHOUSE_LOAD_HISTORY` - Warehouse utilization metrics
+- `SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY` - Query execution details
+- `SHOW WAREHOUSES` command - List active warehouses
 
 ## Additional Scripts
 
