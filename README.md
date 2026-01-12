@@ -59,8 +59,10 @@ POSTGRES_URL=postgres://user:password@host:port/database?sslmode=require
 ### 5. Run the Dashboard
 
 ```bash
-streamlit run snowflake_credit_monitor.py
+streamlit run app.py
 ```
+
+> **Note:** The legacy `snowflake_credit_monitor.py` is still available but the new modular `app.py` is recommended.
 
 ### 6. Access the App
 
@@ -129,6 +131,28 @@ http://localhost:8501
 - Adjustable limit (10, 15, 25, 50 queries)
 - Cost distribution by query type (pie chart)
 - Expandable SQL preview for top 5 queries
+
+## Project Structure
+
+```
+sf_credit_monitor/
+├── app.py                    # Main Streamlit entry point
+├── config.py                 # Configuration & constants
+├── database.py               # Snowflake connection handling
+├── queries.py                # All data fetching functions
+├── components/
+│   ├── __init__.py
+│   ├── sidebar.py            # Sidebar controls
+│   ├── metrics.py            # Summary metrics section
+│   ├── charts.py             # Daily/hourly charts
+│   ├── efficiency.py         # Warehouse efficiency section
+│   ├── expensive_queries.py  # Expensive queries analysis
+│   └── warehouse_breakdown.py # Per-warehouse breakdown
+├── snowflake_credit_monitor.py  # Legacy monolithic version
+├── requirements.txt
+├── .env                      # Credentials (not in repo)
+└── README.md
+```
 
 ## Configuration
 
