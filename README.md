@@ -49,9 +49,7 @@ Create a `.env` file in the project root:
 SNOWFLAKE_ACCOUNT=your_account_identifier
 SNOWFLAKE_USER=your_username
 SNOWFLAKE_PASSWORD=your_password
-
-# PostgreSQL (optional, for bulk operations scripts)
-POSTGRES_URL=postgres://user:password@host:port/database?sslmode=require
+SNOWFLAKE_WAREHOUSE=COMPUTE_WH
 ```
 
 > **Note:** The `.env` file is gitignored and will not be committed to the repository.
@@ -61,8 +59,6 @@ POSTGRES_URL=postgres://user:password@host:port/database?sslmode=require
 ```bash
 streamlit run app.py
 ```
-
-> **Note:** The legacy `snowflake_credit_monitor.py` is still available but the new modular `app.py` is recommended.
 
 ### 6. Access the App
 
@@ -148,9 +144,9 @@ sf_credit_monitor/
 │   ├── efficiency.py         # Warehouse efficiency section
 │   ├── expensive_queries.py  # Expensive queries analysis
 │   └── warehouse_breakdown.py # Per-warehouse breakdown
-├── snowflake_credit_monitor.py  # Legacy monolithic version
 ├── requirements.txt
 ├── .env                      # Credentials (not in repo)
+├── .gitignore
 └── README.md
 ```
 
@@ -176,18 +172,6 @@ The user needs access to:
 - `SNOWFLAKE.ACCOUNT_USAGE.WAREHOUSE_LOAD_HISTORY` - Warehouse utilization metrics
 - `SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY` - Query execution details
 - `SHOW WAREHOUSES` command - List active warehouses
-
-## Additional Scripts
-
-This repository also includes PostgreSQL bulk operation scripts for testing:
-
-| Script | Description |
-|--------|-------------|
-| `bulk_insert.py` | Insert 1M records using COPY command |
-| `bulk_insert_append.py` | Append records without dropping table |
-| `bulk_update.py` | Bulk update with multiple methods |
-| `bulk_update_50k.py` | Smaller update script (50K records) |
-| `run_insert_then_update.py` | Combined insert + update pipeline |
 
 ## Troubleshooting
 

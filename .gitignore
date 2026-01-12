@@ -25,3 +25,8 @@ Thumbs.db
 
 # Streamlit
 .streamlit/secrets.toml
+
+# PostgreSQL scripts (not part of this project)
+bulk_insert*.py
+bulk_update*.py
+run_insert_then_update.py
