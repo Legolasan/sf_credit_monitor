@@ -9,6 +9,7 @@ A Streamlit-based dashboard to monitor and analyze Snowflake credit consumption,
 ## Features
 
 - **Multi-Connection Management** - Save and switch between multiple Snowflake connections via UI
+- **🔒 Encrypted Credentials** - Passwords are encrypted using Fernet (AES-128) before storage
 - **Multi-Warehouse Selection** - Analyze one or multiple warehouses simultaneously
 - **Cost Breakdown** - Per-warehouse credit and cost distribution
 - **Daily Trends** - Visual charts showing credit consumption over time
@@ -75,13 +76,13 @@ http://localhost:8501
 
 | Control | Description |
 |---------|-------------|
-| **Manage Connections** | Toggle to show/hide connection management |
-| **Active Connection** | Switch between saved Snowflake connections |
+| **Active Connection** | Quick-switch dropdown between Snowflake connections |
+| **⚙️ Manage Connections** | Opens modal for full connection management |
 | **Select Warehouses** | Multi-select dropdown to choose warehouses |
 | **Days to analyze** | Slider to set the time range (1-30 days) |
 | **Auto-refresh** | Toggle automatic data refresh |
-| **Refresh Data** | Manual refresh button |
-| **Reload Warehouses** | Refresh the warehouse list |
+| **🔄 Refresh Data** | Manual data refresh button |
+| **🔃 Reload Warehouses** | Refresh the warehouse list from Snowflake |
 
 ### Connection Management
 
@@ -91,17 +92,34 @@ The app supports multiple Snowflake connections:
 2. **Saved Connections** - Add custom connections via the UI
 
 **Adding a New Connection:**
-1. Check "Manage Connections" in the sidebar
-2. Fill in the connection details:
+1. Click "⚙️ Manage Connections" button in the sidebar
+2. Go to the "➕ Add New" tab in the modal
+3. Fill in the connection details:
    - Connection Name (e.g., "Production", "Development")
    - Account ID
    - Username
    - Password
    - Default Warehouse
-3. Click "Test" to verify the connection
-4. Click "Save" to store the connection
+4. Click "🔍 Test Connection" to verify
+5. Click "💾 Save Connection" to store
 
-> **Note:** Saved connections are stored in `connections.json` (gitignored for security)
+**Quick Switch:** Use the "Active Connection" dropdown in the sidebar to quickly switch between saved connections.
+
+### Security
+
+🔒 **Password Encryption:**
+- Passwords are encrypted using **Fernet symmetric encryption** (AES-128-CBC with HMAC)
+- An encryption key is auto-generated on first use and stored in your `.env` file
+- The `connections.json` file only contains encrypted passwords
+- Both `.env` and `connections.json` are gitignored
+
+**Security Files:**
+| File | Contents | Git Status |
+|------|----------|------------|
+| `.env` | Snowflake credentials + encryption key | 🔒 Gitignored |
+| `connections.json` | Saved connections (encrypted passwords) | 🔒 Gitignored |
+
+> **Note:** The encryption key in `.env` is required to decrypt saved passwords. If lost, saved connections will need to be re-added.
 
 ### Metrics Displayed
 
@@ -159,18 +177,18 @@ sf_credit_monitor/
 ├── config.py                 # Configuration & constants
 ├── database.py               # Snowflake connection handling
 ├── queries.py                # All data fetching functions
-├── connection_manager.py     # Multi-connection CRUD operations
+├── connection_manager.py     # Multi-connection CRUD + encryption
 ├── components/
 │   ├── __init__.py
-│   ├── sidebar.py            # Sidebar controls & connection UI
+│   ├── sidebar.py            # Sidebar controls & connection modal
 │   ├── metrics.py            # Summary metrics section
 │   ├── charts.py             # Daily/hourly charts
 │   ├── efficiency.py         # Warehouse efficiency section
 │   ├── expensive_queries.py  # Expensive queries analysis
 │   └── warehouse_breakdown.py # Per-warehouse breakdown
-├── requirements.txt
-├── .env                      # Credentials (not in repo)
-├── connections.json          # Saved connections (not in repo)
+├── requirements.txt          # Dependencies (includes cryptography)
+├── .env                      # Credentials + encryption key (not in repo)
+├── connections.json          # Saved connections, encrypted (not in repo)
 ├── .gitignore
 └── README.md
 ```

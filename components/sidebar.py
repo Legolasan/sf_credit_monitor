@@ -146,7 +146,8 @@ def connection_management_dialog():
     
     # Footer
     st.markdown("---")
-    st.caption("⚠️ Credentials are stored locally in `connections.json`")
+    st.caption("🔒 Passwords are encrypted before storage")
+    st.caption("📁 Stored in `connections.json` (gitignored)")
 
 
 def render_sidebar():
