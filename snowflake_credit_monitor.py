@@ -59,6 +59,7 @@ SNOWFLAKE_CONFIG = {
 FIVETRAN_WAREHOUSE = "FIVETRAN_WAREHOUSE"
 CREDIT_RATE = 3.00  # USD per credit
 DEFAULT_DAYS = 7
+CACHE_TTL = 300  # Cache for 5 minutes to improve performance
 
 
 @st.cache_resource
@@ -72,7 +73,7 @@ def get_connection():
         return None
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=CACHE_TTL)
 def get_daily_credits(days_back: int, warehouses: tuple):
     """Get daily credit consumption for multiple warehouses"""
     conn = get_connection()
@@ -112,7 +113,7 @@ def get_daily_credits(days_back: int, warehouses: tuple):
         return pd.DataFrame()
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=CACHE_TTL)
 def get_hourly_breakdown(days_back: int, warehouses: tuple):
     """Get hourly credit breakdown for multiple warehouses"""
     conn = get_connection()
@@ -145,7 +146,7 @@ def get_hourly_breakdown(days_back: int, warehouses: tuple):
         return pd.DataFrame()
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=CACHE_TTL)
 def get_query_breakdown(days_back: int, warehouses: tuple):
     """Get query type breakdown for multiple warehouses"""
     conn = get_connection()
@@ -184,7 +185,7 @@ def get_query_breakdown(days_back: int, warehouses: tuple):
         return pd.DataFrame()
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=CACHE_TTL)
 def get_per_warehouse_credits(days_back: int, warehouses: tuple):
     """Get credit breakdown per warehouse"""
     conn = get_connection()
@@ -222,7 +223,7 @@ def get_per_warehouse_credits(days_back: int, warehouses: tuple):
         return pd.DataFrame()
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=CACHE_TTL)
 def get_total_credits(days_back: int, warehouses: tuple):
     """Get total credit summary for multiple warehouses"""
     conn = get_connection()
@@ -264,7 +265,7 @@ def get_total_credits(days_back: int, warehouses: tuple):
         return {'credits': 0, 'cost': 0, 'queries': 0}
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=CACHE_TTL)
 def get_warehouse_efficiency(days_back: int, warehouses: tuple):
     """Get warehouse efficiency metrics"""
     conn = get_connection()
@@ -340,8 +341,8 @@ def get_warehouse_efficiency(days_back: int, warehouses: tuple):
         return pd.DataFrame()
 
 
-@st.cache_data(ttl=60)
-def get_expensive_queries(days_back: int, warehouses: tuple, limit: int = 15):
+@st.cache_data(ttl=CACHE_TTL)
+def get_expensive_queries(days_back: int, warehouses: tuple, limit: int = 10):
     """Get most expensive queries by execution time"""
     conn = get_connection()
     if not conn:
@@ -498,8 +499,9 @@ SNOWFLAKE_WAREHOUSE=COMPUTE_WH
     # Convert list to tuple for caching (lists aren't hashable)
     warehouses_tuple = tuple(selected_warehouses)
     
-    # Summary metrics
-    summary = get_total_credits(days_back, warehouses_tuple)
+    # Summary metrics with loading spinner
+    with st.spinner("Loading summary metrics..."):
+        summary = get_total_credits(days_back, warehouses_tuple)
     
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -717,62 +719,69 @@ SNOWFLAKE_WAREHOUSE=COMPUTE_WH
     
     st.markdown("---")
     
-    # Expensive Queries Section
+    # Expensive Queries Section (lazy loaded for performance)
     st.subheader("💰 Most Expensive Queries")
     
-    col1, col2 = st.columns([3, 1])
-    with col2:
-        query_limit = st.selectbox("Show top", [10, 15, 25, 50], index=1)
+    load_expensive = st.checkbox("Load expensive queries analysis", value=False, 
+                                  help="This query may take longer to load")
     
-    expensive_df = get_expensive_queries(days_back, warehouses_tuple, query_limit)
-    
-    if not expensive_df.empty:
-        # Summary stats
-        total_exec_time = expensive_df['Exec (s)'].sum()
-        total_est_cost = expensive_df['Est. Cost ($)'].sum()
-        
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Total Exec Time (top queries)", f"{total_exec_time:,.0f}s")
+    if load_expensive:
+        col1, col2 = st.columns([3, 1])
         with col2:
-            st.metric("Est. Cost (top queries)", f"${total_est_cost:.2f}")
-        with col3:
-            avg_gb = expensive_df['GB Scanned'].mean()
-            st.metric("Avg Data Scanned", f"{avg_gb:.2f} GB")
+            query_limit = st.selectbox("Show top", [10, 15, 25, 50], index=0)
         
-        # Query type distribution for expensive queries
-        col1, col2 = st.columns([2, 1])
+        with st.spinner("Analyzing expensive queries..."):
+            expensive_df = get_expensive_queries(days_back, warehouses_tuple, query_limit)
         
-        with col1:
-            # Main table
-            display_cols = ['User', 'Warehouse', 'Type', 'Exec (s)', 'GB Scanned', 'Est. Cost ($)', 'Start Time']
-            display_df = expensive_df[display_cols].copy()
-            display_df['Est. Cost ($)'] = display_df['Est. Cost ($)'].apply(lambda x: f"${x:.4f}")
-            display_df['Start Time'] = pd.to_datetime(display_df['Start Time']).dt.strftime('%Y-%m-%d %H:%M')
+        if not expensive_df.empty:
+            # Summary stats
+            total_exec_time = expensive_df['Exec (s)'].sum()
+            total_est_cost = expensive_df['Est. Cost ($)'].sum()
             
-            st.dataframe(display_df, use_container_width=True, hide_index=True)
-        
-        with col2:
-            # Query type pie for expensive queries
-            type_counts = expensive_df.groupby('Type')['Est. Cost ($)'].sum().reset_index()
-            fig = px.pie(
-                type_counts,
-                values='Est. Cost ($)',
-                names='Type',
-                title='Cost by Query Type',
-                color_discrete_sequence=px.colors.sequential.Reds_r
-            )
-            fig.update_layout(height=300)
-            st.plotly_chart(fig, use_container_width=True)
-        
-        # Expandable query details
-        with st.expander("🔍 View Query Details"):
-            for idx, row in expensive_df.head(5).iterrows():
-                st.markdown(f"**Query {idx+1}** - {row['Type']} by `{row['User']}` ({row['Exec (s)']}s)")
-                st.code(row['Query Preview'], language='sql')
-                st.markdown("---")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Total Exec Time (top queries)", f"{total_exec_time:,.0f}s")
+            with col2:
+                st.metric("Est. Cost (top queries)", f"${total_est_cost:.2f}")
+            with col3:
+                avg_gb = expensive_df['GB Scanned'].mean()
+                st.metric("Avg Data Scanned", f"{avg_gb:.2f} GB")
+            
+            # Query type distribution for expensive queries
+            col1, col2 = st.columns([2, 1])
+            
+            with col1:
+                # Main table
+                display_cols = ['User', 'Warehouse', 'Type', 'Exec (s)', 'GB Scanned', 'Est. Cost ($)', 'Start Time']
+                display_df = expensive_df[display_cols].copy()
+                display_df['Est. Cost ($)'] = display_df['Est. Cost ($)'].apply(lambda x: f"${x:.4f}")
+                display_df['Start Time'] = pd.to_datetime(display_df['Start Time']).dt.strftime('%Y-%m-%d %H:%M')
+                
+                st.dataframe(display_df, use_container_width=True, hide_index=True)
+            
+            with col2:
+                # Query type pie for expensive queries
+                type_counts = expensive_df.groupby('Type')['Est. Cost ($)'].sum().reset_index()
+                fig = px.pie(
+                    type_counts,
+                    values='Est. Cost ($)',
+                    names='Type',
+                    title='Cost by Query Type',
+                    color_discrete_sequence=px.colors.sequential.Reds_r
+                )
+                fig.update_layout(height=300)
+                st.plotly_chart(fig, use_container_width=True)
+            
+            # Expandable query details
+            with st.expander("🔍 View Query Details"):
+                for idx, row in expensive_df.head(5).iterrows():
+                    st.markdown(f"**Query {idx+1}** - {row['Type']} by `{row['User']}` ({row['Exec (s)']}s)")
+                    st.code(row['Query Preview'], language='sql')
+                    st.markdown("---")
+        else:
+            st.info("No query data available")
     else:
-        st.info("No query data available")
+        st.caption("👆 Check the box above to load expensive queries analysis")
     
     st.markdown("---")
     
