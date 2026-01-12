@@ -46,12 +46,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Configuration
+# Configuration - Set these in your .env file
 SNOWFLAKE_CONFIG = {
-    "account": os.getenv("SNOWFLAKE_ACCOUNT", "NRMGHHK-QKB80056"),
-    "user": os.getenv("SNOWFLAKE_USER", "yuki"),
+    "account": os.getenv("SNOWFLAKE_ACCOUNT", ""),
+    "user": os.getenv("SNOWFLAKE_USER", ""),
     "password": os.getenv("SNOWFLAKE_PASSWORD", ""),
-    "warehouse": "COMPUTE_WH",
+    "warehouse": os.getenv("SNOWFLAKE_WAREHOUSE", "COMPUTE_WH"),
     "database": "SNOWFLAKE",
     "schema": "ACCOUNT_USAGE",
 }
@@ -488,9 +488,10 @@ def main():
     if not get_connection():
         st.warning("⚠️ Please configure your Snowflake credentials in the .env file")
         st.code("""
-SNOWFLAKE_ACCOUNT=NRMGHHK-QKB80056
-SNOWFLAKE_USER=yuki
-SNOWFLAKE_PASSWORD=your_password_here
+SNOWFLAKE_ACCOUNT=your_account_identifier
+SNOWFLAKE_USER=your_username
+SNOWFLAKE_PASSWORD=your_password
+SNOWFLAKE_WAREHOUSE=COMPUTE_WH
         """)
         return
     
